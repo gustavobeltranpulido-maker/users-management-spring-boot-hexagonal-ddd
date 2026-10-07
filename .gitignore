@@ -42,5 +42,6 @@ build/
 
 /spec/
 
-# Credenciales locales
-local.properties
+# Secretos locales. Nunca deben versionarse.
+/.environments/
+/.env

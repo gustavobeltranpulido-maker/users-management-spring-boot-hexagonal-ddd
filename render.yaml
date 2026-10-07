@@ -1,56 +1,31 @@
-# =============================================
-# Render Blueprint: base de datos PostgreSQL + API (Docker)
-# Render > New > Blueprint > seleccionar este repositorio
-# =============================================
-
-databases:
-  - name: users-management-db
-    databaseName: crud_usuarios
-    user: users_admin
-    plan: free
-
 services:
   - type: web
     name: users-management-api
     runtime: docker
     plan: free
-    dockerfilePath: ./Dockerfile
+    branch: main
+    autoDeployTrigger: commit
     healthCheckPath: /v3/api-docs
     envVars:
-      # Conexion a la BD (Render las toma de la base creada arriba)
       - key: DB_HOST
-        fromDatabase:
-          name: users-management-db
-          property: host
+        sync: false
       - key: DB_PORT
-        fromDatabase:
-          name: users-management-db
-          property: port
+        sync: false
       - key: DB_NAME
-        fromDatabase:
-          name: users-management-db
-          property: database
+        value: crud_usuarios
       - key: DB_USERNAME
-        fromDatabase:
-          name: users-management-db
-          property: user
+        sync: false
       - key: DB_PASSWORD
-        fromDatabase:
-          name: users-management-db
-          property: password
-
-      # Ejecuta schema.sql al arrancar (es idempotente: IF NOT EXISTS / ON CONFLICT)
-      - key: SPRING_SQL_INIT_MODE
-        value: always
-
-      # Clave JWT aleatoria (Base64, 256 bits) generada por Render
+        sync: false
+      - key: DB_SSL_MODE
+        value: REQUIRED
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_FROM_ADDRESS
+        sync: false
+      - key: BREVO_FROM_NAME
+        value: Gestion de Usuarios
       - key: JWT_SECRET
         generateValue: true
-
-      # SMTP: Render las pide al crear el Blueprint (no se guardan en el repo)
-      - key: SMTP_USERNAME
-        sync: false
-      - key: SMTP_PASSWORD
-        sync: false
-      - key: SMTP_FROM_ADDRESS
-        sync: false
+      - key: JWT_EXPIRATION_SECONDS
+        value: "900"
