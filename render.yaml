@@ -1,56 +1,45 @@
-# =============================================
-# Render Blueprint: base de datos PostgreSQL + API (Docker)
-# Render > New > Blueprint > seleccionar este repositorio
-# =============================================
-
-databases:
-  - name: users-management-db
-    databaseName: crud_usuarios
-    user: users_admin
-    plan: free
-
 services:
   - type: web
     name: users-management-api
     runtime: docker
     plan: free
-    dockerfilePath: ./Dockerfile
+    branch: main
+    autoDeployTrigger: commit
     healthCheckPath: /v3/api-docs
     envVars:
-      # Conexion a la BD (Render las toma de la base creada arriba)
+      # Base de datos: Supabase (Session pooler, IPv4)
       - key: DB_HOST
-        fromDatabase:
-          name: users-management-db
-          property: host
+        sync: false
       - key: DB_PORT
-        fromDatabase:
-          name: users-management-db
-          property: port
+        value: "5432"
       - key: DB_NAME
-        fromDatabase:
-          name: users-management-db
-          property: database
+        value: postgres
       - key: DB_USERNAME
-        fromDatabase:
-          name: users-management-db
-          property: user
+        sync: false
       - key: DB_PASSWORD
-        fromDatabase:
-          name: users-management-db
-          property: password
+        sync: false
+      - key: DB_SSL_MODE
+        value: require
 
-      # Ejecuta schema.sql al arrancar (es idempotente: IF NOT EXISTS / ON CONFLICT)
-      - key: SPRING_SQL_INIT_MODE
-        value: always
+      # Kafka: Aiven (SASL_SSL + SCRAM-SHA-256)
+      - key: KAFKA_ENABLED
+        value: "true"
+      - key: KAFKA_BOOTSTRAP_SERVERS
+        sync: false
+      - key: KAFKA_SECURITY_PROTOCOL
+        value: SASL_SSL
+      - key: KAFKA_SASL_MECHANISM
+        value: SCRAM-SHA-256
+      - key: KAFKA_USERNAME
+        sync: false
+      - key: KAFKA_PASSWORD
+        sync: false
+      - key: KAFKA_CA_CERT
+        sync: false
+      - key: KAFKA_TOPIC_USER_EVENTS
+        value: user-events
 
-      # Clave JWT aleatoria (Base64, 256 bits) generada por Render
       - key: JWT_SECRET
         generateValue: true
-
-      # SMTP: Render las pide al crear el Blueprint (no se guardan en el repo)
-      - key: SMTP_USERNAME
-        sync: false
-      - key: SMTP_PASSWORD
-        sync: false
-      - key: SMTP_FROM_ADDRESS
-        sync: false
+      - key: JWT_EXPIRATION_SECONDS
+        value: "900"
