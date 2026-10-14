@@ -9,6 +9,7 @@ public final class PersistenceException extends RuntimeException {
   private static final String MESSAGE_ALL = "Failed to retrieve all users.";
   private static final String MESSAGE_DELETE = "Failed to delete user with ID: '%s'.";
   private static final String MESSAGE_CONNECTION = "Could not establish database connection.";
+  private static final String MESSAGE_ACCOUNT_SAVE = "Failed to save account for user ID: '%s'.";
 
   private PersistenceException(final String message, final Throwable cause) {
     super(message, cause);
@@ -44,5 +45,10 @@ public final class PersistenceException extends RuntimeException {
 
   public static PersistenceException becauseConnectionFailed(final Throwable cause) {
     return new PersistenceException(MESSAGE_CONNECTION, cause);
+  }
+
+  public static PersistenceException becauseAccountSaveFailed(
+      final String userId, final Throwable cause) {
+    return new PersistenceException(String.format(MESSAGE_ACCOUNT_SAVE, userId), cause);
   }
 }

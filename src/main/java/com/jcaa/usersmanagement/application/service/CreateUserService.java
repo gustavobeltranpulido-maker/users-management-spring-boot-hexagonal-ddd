@@ -3,11 +3,13 @@ package com.jcaa.usersmanagement.application.service;
 import com.jcaa.usersmanagement.application.port.in.CreateUserUseCase;
 import com.jcaa.usersmanagement.application.port.out.GetUserByEmailPort;
 import com.jcaa.usersmanagement.application.port.out.PublishDomainEventPort;
+import com.jcaa.usersmanagement.application.port.out.SaveAccountPort;
 import com.jcaa.usersmanagement.application.port.out.SaveUserPort;
 import com.jcaa.usersmanagement.application.service.dto.command.CreateUserCommand;
 import com.jcaa.usersmanagement.application.service.mapper.UserApplicationMapper;
 import com.jcaa.usersmanagement.domain.event.UserCreatedDomainEvent;
 import com.jcaa.usersmanagement.domain.exception.UserAlreadyExistsException;
+import com.jcaa.usersmanagement.domain.model.AccountModel;
 import com.jcaa.usersmanagement.domain.model.UserModel;
 import com.jcaa.usersmanagement.domain.valueobject.UserEmail;
 import jakarta.validation.ConstraintViolationException;
@@ -15,6 +17,7 @@ import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
 import jakarta.validation.ConstraintViolation;
@@ -26,10 +29,12 @@ public class CreateUserService implements CreateUserUseCase {
 
   private final SaveUserPort saveUserPort;
   private final GetUserByEmailPort getUserByEmailPort;
+  private final SaveAccountPort saveAccountPort;
   private final PublishDomainEventPort publishDomainEventPort;
   private final Validator validator;
 
   @Override
+  @Transactional
   public UserModel execute(final CreateUserCommand command) {
     validateCommand(command);
 
@@ -38,6 +43,7 @@ public class CreateUserService implements CreateUserUseCase {
 
     final UserModel userToSave = UserApplicationMapper.fromCreateCommandToModel(command);
     final UserModel savedUser = saveUserPort.save(userToSave);
+    saveAccountPort.save(AccountModel.openSavingsAccountFor(savedUser));
 
     // La notificación por correo la envía el microservicio notifiers al consumir este evento
     publishDomainEventPort.publish(new UserCreatedDomainEvent(savedUser));
