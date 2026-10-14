@@ -21,6 +21,21 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at  TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Cuentas: al crear un usuario se abre automaticamente su cuenta SAVINGS
+CREATE TABLE IF NOT EXISTS accounts (
+    id          VARCHAR(36)  NOT NULL PRIMARY KEY,
+    user_id     VARCHAR(36)  NOT NULL,
+    owner_name  VARCHAR(100) NOT NULL,
+    owner_email VARCHAR(150) NOT NULL,
+    type        VARCHAR(20)  NOT NULL
+                CONSTRAINT chk_accounts_type CHECK (type IN ('SAVINGS', 'CHECKING')),
+    status      VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE'
+                CONSTRAINT chk_accounts_status CHECK (status IN ('ACTIVE', 'INACTIVE', 'BLOCKED')),
+    created_at  TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_accounts_user_type UNIQUE (user_id, type)
+);
+
 -- Usuario administrador inicial (password: Admin1234!)
 INSERT INTO users (id, name, email, password, role, status)
 VALUES (

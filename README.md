@@ -54,6 +54,13 @@ automatico de cada commit que llegue a la rama `main`.
 Las credenciales nunca deben guardarse en `application.properties` ni en
 `render.yaml`.
 
+## Cuenta por defecto
+
+Al crear un usuario se inserta tambien su cuenta `SAVINGS` (estado `ACTIVE`) en la
+tabla `accounts`, dentro de la misma transaccion: si alguna de las dos inserciones
+falla, no se guarda ninguna. Si el usuario ya tiene una cuenta de ese tipo, no se
+duplica (`UNIQUE (user_id, type)`).
+
 ## Eventos de dominio (Kafka)
 
 Este servicio no envia correos. Tras crear, actualizar o eliminar un usuario publica

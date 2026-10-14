@@ -6,12 +6,15 @@ import static org.mockito.Mockito.*;
 
 import com.jcaa.usersmanagement.application.port.out.GetUserByEmailPort;
 import com.jcaa.usersmanagement.application.port.out.PublishDomainEventPort;
+import com.jcaa.usersmanagement.application.port.out.SaveAccountPort;
 import com.jcaa.usersmanagement.application.port.out.SaveUserPort;
 import com.jcaa.usersmanagement.application.service.dto.command.CreateUserCommand;
+import com.jcaa.usersmanagement.domain.enums.AccountType;
 import com.jcaa.usersmanagement.domain.enums.UserRole;
 import com.jcaa.usersmanagement.domain.enums.UserStatus;
 import com.jcaa.usersmanagement.domain.event.UserCreatedDomainEvent;
 import com.jcaa.usersmanagement.domain.exception.UserAlreadyExistsException;
+import com.jcaa.usersmanagement.domain.model.AccountModel;
 import com.jcaa.usersmanagement.domain.model.UserModel;
 import com.jcaa.usersmanagement.domain.valueobject.UserEmail;
 import com.jcaa.usersmanagement.domain.valueobject.UserId;
@@ -25,6 +28,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -39,6 +43,7 @@ class CreateUserServiceTest {
 
   @Mock private SaveUserPort saveUserPort;
   @Mock private GetUserByEmailPort getUserByEmailPort;
+  @Mock private SaveAccountPort saveAccountPort;
   @Mock private PublishDomainEventPort publishDomainEventPort;
 
   private CreateUserService service;
@@ -50,6 +55,7 @@ class CreateUserServiceTest {
           new CreateUserService(
               saveUserPort,
               getUserByEmailPort,
+              saveAccountPort,
               publishDomainEventPort,
               validatorFactory.getValidator());
     }
@@ -58,7 +64,7 @@ class CreateUserServiceTest {
   // ── flujo feliz
 
   @Test
-  @DisplayName("execute() guarda el usuario y publica user.created cuando el email no existe")
+  @DisplayName("execute() guarda el usuario, abre su cuenta de ahorros y publica user.created")
   void shouldSaveUserAndPublishEventWhenEmailIsNew() {
     // Arrange
     final CreateUserCommand command =
@@ -86,6 +92,12 @@ class CreateUserServiceTest {
         () -> assertEquals("u-01", result.getId().value(), "id del usuario guardado"));
 
     verify(saveUserPort).save(any(UserModel.class));
+    final ArgumentCaptor<AccountModel> accountCaptor = ArgumentCaptor.forClass(AccountModel.class);
+    verify(saveAccountPort).save(accountCaptor.capture());
+    assertAll(
+        "cuenta creada para el usuario",
+        () -> assertEquals("u-01", accountCaptor.getValue().getUserId().value(), "userId"),
+        () -> assertEquals(AccountType.SAVINGS, accountCaptor.getValue().getType(), "tipo"));
     verify(publishDomainEventPort).publish(any(UserCreatedDomainEvent.class));
   }
 
@@ -112,6 +124,7 @@ class CreateUserServiceTest {
     // Act & Assert
     assertThrows(UserAlreadyExistsException.class, () -> service.execute(command));
     verify(saveUserPort, never()).save(any());
+    verify(saveAccountPort, never()).save(any());
     verify(publishDomainEventPort, never()).publish(any());
   }
 
@@ -127,6 +140,6 @@ class CreateUserServiceTest {
 
     // Act & Assert
     assertThrows(ConstraintViolationException.class, () -> service.execute(command));
-    verifyNoInteractions(saveUserPort, getUserByEmailPort, publishDomainEventPort);
+    verifyNoInteractions(saveUserPort, getUserByEmailPort, saveAccountPort, publishDomainEventPort);
   }
 }
