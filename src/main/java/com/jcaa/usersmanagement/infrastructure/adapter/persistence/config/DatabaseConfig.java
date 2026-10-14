@@ -1,11 +1,16 @@
 package com.jcaa.usersmanagement.infrastructure.adapter.persistence.config;
 
 public record DatabaseConfig(
-    String host, int port, String databaseName, String username, String password) {
-  private static final String URL_TEMPLATE =
-      "jdbc:postgresql://%s:%d/%s";
+    String host,
+    int port,
+    String databaseName,
+    String username,
+    String password,
+    String sslMode) {
+  // sslMode usa los valores de PostgreSQL: disable, prefer, require, verify-ca, verify-full
+  private static final String URL_TEMPLATE = "jdbc:postgresql://%s:%d/%s?sslmode=%s";
 
   public String buildJdbcUrl() {
-    return String.format(URL_TEMPLATE, host, port, databaseName);
+    return String.format(URL_TEMPLATE, host, port, databaseName, sslMode);
   }
 }

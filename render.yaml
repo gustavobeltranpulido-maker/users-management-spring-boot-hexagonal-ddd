@@ -7,24 +7,38 @@ services:
     autoDeployTrigger: commit
     healthCheckPath: /v3/api-docs
     envVars:
+      # Base de datos: Supabase (Session pooler, IPv4)
       - key: DB_HOST
         sync: false
       - key: DB_PORT
-        sync: false
+        value: "5432"
       - key: DB_NAME
-        value: crud_usuarios
+        value: postgres
       - key: DB_USERNAME
         sync: false
       - key: DB_PASSWORD
         sync: false
       - key: DB_SSL_MODE
-        value: REQUIRED
-      - key: BREVO_API_KEY
+        value: require
+
+      # Kafka: Aiven (SASL_SSL + SCRAM-SHA-256)
+      - key: KAFKA_ENABLED
+        value: "true"
+      - key: KAFKA_BOOTSTRAP_SERVERS
         sync: false
-      - key: BREVO_FROM_ADDRESS
+      - key: KAFKA_SECURITY_PROTOCOL
+        value: SASL_SSL
+      - key: KAFKA_SASL_MECHANISM
+        value: SCRAM-SHA-256
+      - key: KAFKA_USERNAME
         sync: false
-      - key: BREVO_FROM_NAME
-        value: Gestion de Usuarios
+      - key: KAFKA_PASSWORD
+        sync: false
+      - key: KAFKA_CA_CERT
+        sync: false
+      - key: KAFKA_TOPIC_USER_EVENTS
+        value: user-events
+
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRATION_SECONDS

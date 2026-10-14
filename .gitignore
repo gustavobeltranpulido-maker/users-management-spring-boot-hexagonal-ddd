@@ -45,3 +45,6 @@ build/
 # Secretos locales. Nunca deben versionarse.
 /.environments/
 /.env
+
+# Archivo de credenciales en desuso (contenia secretos)
+local.properties

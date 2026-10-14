@@ -6,9 +6,11 @@ import static org.mockito.Mockito.*;
 
 import com.jcaa.usersmanagement.application.port.out.DeleteUserPort;
 import com.jcaa.usersmanagement.application.port.out.GetUserByIdPort;
+import com.jcaa.usersmanagement.application.port.out.PublishDomainEventPort;
 import com.jcaa.usersmanagement.application.service.dto.command.DeleteUserCommand;
 import com.jcaa.usersmanagement.domain.enums.UserRole;
 import com.jcaa.usersmanagement.domain.enums.UserStatus;
+import com.jcaa.usersmanagement.domain.event.UserDeletedDomainEvent;
 import com.jcaa.usersmanagement.domain.exception.UserNotFoundException;
 import com.jcaa.usersmanagement.domain.model.UserModel;
 import com.jcaa.usersmanagement.domain.valueobject.UserEmail;
@@ -37,6 +39,7 @@ class DeleteUserServiceTest {
 
   @Mock private DeleteUserPort deleteUserPort;
   @Mock private GetUserByIdPort getUserByIdPort;
+  @Mock private PublishDomainEventPort publishDomainEventPort;
 
   private DeleteUserService service;
 
@@ -44,7 +47,8 @@ class DeleteUserServiceTest {
   void setUp() {
     try (final ValidatorFactory validatorFactory = Validation.buildDefaultValidatorFactory()) {
       service =
-          new DeleteUserService(deleteUserPort, getUserByIdPort, validatorFactory.getValidator());
+          new DeleteUserService(
+              deleteUserPort, getUserByIdPort, publishDomainEventPort, validatorFactory.getValidator());
     }
   }
 
@@ -72,6 +76,7 @@ class DeleteUserServiceTest {
 
     // Assert
     verify(deleteUserPort).delete(new UserId("u-001"));
+    verify(publishDomainEventPort).publish(any(UserDeletedDomainEvent.class));
   }
 
   // ── usuario no encontrado
@@ -87,6 +92,7 @@ class DeleteUserServiceTest {
     // Act & Assert
     assertThrows(UserNotFoundException.class, () -> service.execute(command));
     verify(deleteUserPort, never()).delete(any());
+    verify(publishDomainEventPort, never()).publish(any());
   }
 
   // ── validación del command

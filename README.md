@@ -17,11 +17,12 @@ En Windows se puede utilizar `mvnw.cmd`.
 
 Copiar `application-secrets.properties.example` como
 `.environments/application-secrets.properties` y reemplazar los valores de ejemplo.
-Este archivo contiene la conexion local a MySQL, la semilla JWT y las credenciales de
-Brevo. La carpeta `.environments` esta excluida de Git y del contexto de Docker.
+Este archivo contiene la conexion a PostgreSQL, la semilla JWT y, opcionalmente, las
+credenciales de Kafka. La carpeta `.environments` esta excluida de Git y del contexto
+de Docker.
 
 En produccion no se utiliza este archivo: los secretos deben configurarse mediante las
-variables de entorno `DB_*`, `JWT_SECRET` y `BREVO_*` del proveedor de despliegue.
+variables de entorno `DB_*`, `JWT_SECRET` y `KAFKA_*` del proveedor de despliegue.
 
 ## Docker Compose local
 
@@ -31,35 +32,46 @@ Copiar `compose.env.example` como `.env`, reemplazar todos los valores y ejecuta
 docker compose up --build
 ```
 
-Compose se detiene con un error si falta `DB_PASSWORD`, `MYSQL_ROOT_PASSWORD`,
-`JWT_SECRET`, `BREVO_API_KEY` o `BREVO_FROM_ADDRESS`. El archivo `.env` esta excluido
-de Git y del contexto de construccion Docker. Los puertos de MySQL y la API se publican
-solo en `127.0.0.1`.
+Compose se detiene con un error si falta `DB_PASSWORD` o `JWT_SECRET`. El archivo
+`.env` esta excluido de Git y del contexto de construccion Docker. Los puertos de
+PostgreSQL y la API se publican solo en `127.0.0.1`.
 
 ## Despliegue en Render
 
 El archivo `render.yaml` define el servicio web, el build con Docker y el despliegue
-automático de cada commit que llegue a la rama `main`.
+automatico de cada commit que llegue a la rama `main`.
 
 1. Crear un Blueprint en Render y seleccionar este repositorio.
 2. Completar en el panel los secretos marcados como requeridos: `DB_HOST`,
-   `DB_USERNAME`, `DB_PASSWORD`, `BREVO_API_KEY` y `BREVO_FROM_ADDRESS`.
-3. Usar una instancia MySQL accesible desde Internet o desde la red privada de
-   Render y ejecutar `src/main/resources/schema.sql` una vez para crear el esquema.
-4. Desplegar el Blueprint. La API quedará disponible en el subdominio
+   `DB_USERNAME`, `DB_PASSWORD`, `KAFKA_BOOTSTRAP_SERVERS`, `KAFKA_USERNAME`,
+   `KAFKA_PASSWORD` y `KAFKA_CA_CERT`.
+3. La base de datos es PostgreSQL en Supabase. Usar el **Session pooler** (IPv4,
+   puerto 5432) con `DB_SSL_MODE=require` y ejecutar `src/main/resources/schema.sql`
+   una vez en el SQL Editor para crear el esquema.
+4. Desplegar el Blueprint. La API quedara disponible en el subdominio
    `onrender.com` asignado por Render y Swagger UI en `/swagger-ui.html`.
 
 Las credenciales nunca deben guardarse en `application.properties` ni en
-`render.yaml`. Para desarrollo local, deben proporcionarse como variables de entorno.
+`render.yaml`.
 
-## Notificaciones por correo
+## Eventos de dominio (Kafka)
 
-Los correos transaccionales se envian con `POST /v3/smtp/email` de Brevo. La llamada
-se ejecuta fuera del hilo HTTP en el executor `notificationExecutor` y dispone de
-timeouts, reintentos para errores de red/408/429/5xx con backoff exponencial, circuit
-breaker e idempotencia para evitar duplicados durante los reintentos.
+Este servicio no envia correos. Tras crear, actualizar o eliminar un usuario publica
+un evento en el topico `KAFKA_TOPIC_USER_EVENTS` (Aiven Kafka, `SASL_SSL` +
+`SCRAM-SHA-256`). El microservicio de notificaciones consume esos eventos y envia el
+correo correspondiente.
 
-Variables requeridas: `BREVO_API_KEY` y `BREVO_FROM_ADDRESS`. El remitente debe estar
-verificado en Brevo. Los parametros de resiliencia `BREVO_CONNECT_TIMEOUT`,
-`BREVO_READ_TIMEOUT`, `BREVO_RETRY_*` y `BREVO_CIRCUIT_*` son opcionales y tienen
-valores predeterminados en `application.properties`.
+Cada mensaje usa el id del usuario como clave y este formato JSON:
+
+```json
+{
+  "eventName": "user.created",
+  "occurredOn": "2026-10-13T21:49:33.123",
+  "payload": { "id": "u-01", "name": "...", "email": "...", "role": "ADMIN", "status": "PENDING" }
+}
+```
+
+Eventos: `user.created`, `user.updated` (mismo payload) y `user.deleted` (solo `id`).
+La publicacion es asincrona: si el broker no responde, el caso de uso termina igual y
+el fallo queda registrado en el log. Con `KAFKA_ENABLED=false` (valor por defecto) los
+eventos se omiten, lo que permite ejecutar la aplicacion en local sin broker.
